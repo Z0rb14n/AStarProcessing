@@ -1,19 +1,15 @@
 package ui;
 
-import processing.core.PApplet;
-import processing.core.PVector;
-
 import util.ConcreteNode;
 import util.Node;
-import util.NodeComparator;
 
+import javax.swing.*;
+import java.awt.*;
 import java.util.HashSet;
 import java.util.PriorityQueue;
 import java.util.Random;
 
-// Represents a graphical implementation of the A* Pathfinding algorithm around randomly generated pixel walls
-public class AStarAttempt extends PApplet {
-
+public class AppPanel extends JPanel {
     // Determines whether the walls use a random seed or the given seed
     private static final boolean IS_RANDOM = true;
     private static final long RANDOM_SEED = 42069;
@@ -21,7 +17,8 @@ public class AStarAttempt extends PApplet {
     // Determines starting position and GOAL position
     private static final int GOAL_X_INDEX = 39;
     private static final int GOAL_Y_INDEX = 39;
-    public static final PVector GOAL = new PVector(GOAL_X_INDEX * 10, GOAL_Y_INDEX * 10);
+    public static final float GOAL_X = GOAL_X_INDEX * 10;
+    public static final float GOAL_Y = GOAL_Y_INDEX * 10;
 
     private static final int START_X_INDEX = 5;
     private static final int START_Y_INDEX = 5;
@@ -30,7 +27,10 @@ public class AStarAttempt extends PApplet {
 
     private static final int MAP_LENGTH = 60;
     private static final int MAP_HEIGHT = 60;
-    private static final float TILE_SIZE = 10;
+    private static final int TILE_SIZE = 10;
+
+    private static final int WINDOW_WIDTH = MAP_LENGTH * TILE_SIZE;
+    private static final int WINDOW_HEIGHT = MAP_HEIGHT * TILE_SIZE;
 
     private PriorityQueue<Node> nodeQueue = new PriorityQueue<>(); // Represents list of nodes to process
     private HashSet<Node> discard = new HashSet<>(100); // Represents discard
@@ -39,18 +39,37 @@ public class AStarAttempt extends PApplet {
     private Node[][] nodesArray = new Node[MAP_LENGTH][MAP_HEIGHT];
     private Node goalNode;
 
-    // EFFECTS: initializes variables (i.e. walls, nodeQueue, and connections)
-    private AStarAttempt() {
+    // EFFECTS: initializes AppPanel with given width, height and initializes nodes, walls and nodal connections
+    AppPanel() {
+        super();
+        setPreferredSize(new Dimension(WINDOW_WIDTH, WINDOW_HEIGHT));
+        setBackground(Color.WHITE);
+
         initWalls();
         initNodes();
         initNodeConnections();
     }
 
+    private Graphics2D graphicsObject;
+
     @Override
     // MODIFIES: this
-    // EFFECTS: initializes the size of the window (required by PApplet)
-    public void settings() {
-        size(MAP_LENGTH * Math.round(TILE_SIZE), MAP_HEIGHT * Math.round(TILE_SIZE));
+    // EFFECTS: processes one node and draws the outcome to the window
+    public void paintComponent(Graphics g) {
+        graphicsObject = (Graphics2D) g;
+        drawBackground();
+        determineIfFinished();
+        processNodeQueue();
+        calculatePathIfExists();
+        drawTileMap();
+        drawNoSolution();
+    }
+
+    // MODIFIES: this
+    // EFFECTS: draws the background (white color);
+    private void drawBackground() {
+        graphicsObject.setColor(Color.WHITE);
+        graphicsObject.fillRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
     }
 
     // MODIFIES: this
@@ -74,7 +93,7 @@ public class AStarAttempt extends PApplet {
         for (int i = 0; i < MAP_LENGTH; i++) {
             for (int j = 0; j < MAP_HEIGHT; j++) {
                 if (walls[i][j]) continue;
-                nodesArray[i][j] = new ConcreteNode((i == START_X_INDEX && j == START_Y_INDEX), new PVector(i * TILE_SIZE, j * TILE_SIZE));
+                nodesArray[i][j] = new ConcreteNode((i == START_X_INDEX && j == START_Y_INDEX), i * TILE_SIZE, j * TILE_SIZE);
             }
         }
         goalNode = nodesArray[GOAL_X_INDEX][GOAL_Y_INDEX];
@@ -100,29 +119,9 @@ public class AStarAttempt extends PApplet {
         }
     }
 
-    @Override
-    // MODIFIES: this
-    // EFFECTS: initializes frameRate
-    public void setup() {
-        frameRate(20);
-    }
-
-
     private boolean finished = false;
     private HashSet<Node> path = new HashSet<>(MAP_LENGTH);
     private boolean noSolution = false;
-
-    @Override
-    // MODIFIES: this
-    // EFFECTS: runs FPS times a second - program logic and draws to the screen
-    public void draw() {
-        background(255);
-        determineIfFinished();
-        processNodeQueue();
-        calculatePathIfExists();
-        drawTileMap();
-        drawNoSolution();
-    }
 
     // MODIFIES: this
     // EFFECTS: determines the given path if there exists a solution
@@ -172,37 +171,42 @@ public class AStarAttempt extends PApplet {
     // MODIFIES: this
     // EFFECTS: draws the tile map
     private void drawTileMap() {
-        noStroke();
         for (int i = 0; i < MAP_LENGTH; i++) {
             for (int j = 0; j < MAP_HEIGHT; j++) {
                 if (!exists(i, j)) {
-                    fill(0xFF000000);
-                    rect(i * TILE_SIZE, j * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    graphicsObject.setColor(Color.BLACK);
+                    graphicsObject.fillRect(i * TILE_SIZE, j * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                     continue;
                 }
                 Node n = nodesArray[i][j];
                 if (n.isGoalNode() || n.isStartingNode()) {
-                    fill(0xFFFF0000);
+                    graphicsObject.setColor(Color.RED);
                 } else if (n.getPublicWeight() == Float.MAX_VALUE) {
-                    fill(0xFFFFFFFF);
+                    graphicsObject.setColor(Color.WHITE);
                 } else if (path.contains(n)) {
-                    fill(0xFF0000FF);
+                    graphicsObject.setColor(Color.BLUE);
                 } else {
-                    fill(0xFF00FF00);
+                    graphicsObject.setColor(Color.GREEN);
                 }
-                rect(i * TILE_SIZE, j * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                graphicsObject.fillRect(i * TILE_SIZE, j * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
         }
+    }
+
+    // EFFECTS: determines whether the given index of array isn't a wall and isn't out of bounds
+    private boolean exists(int i, int j) {
+        return i >= 0 && i < MAP_LENGTH && j >= 0 && j < MAP_HEIGHT && !walls[i][j];
     }
 
     // MODIFIES: this
     // EFFECTS: draws the no solution text if there is no solution
     private void drawNoSolution() {
         if (noSolution) {
-            fill(0xFFFF0000);
-            textSize(50);
-            textAlign(CENTER, CENTER);
-            text("NO SOLUTION", width / 2.0f, height / 2.0f);
+            graphicsObject.setColor(Color.RED);
+            Font font = graphicsObject.getFont();
+            font = font.deriveFont(Font.PLAIN, 50);
+            graphicsObject.setFont(font);
+            graphicsObject.drawString("NO SOLUTION", WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
         }
     }
 
@@ -217,14 +221,5 @@ public class AStarAttempt extends PApplet {
         discard.add(n);
         assert n != null;
         nodeQueue.addAll(n.updateConnectedNodes());
-    }
-
-    // EFFECTS: determines whether the given index of array isn't a wall and isn't out of bounds
-    private boolean exists(int i, int j) {
-        return i >= 0 && i < MAP_LENGTH && j >= 0 && j < MAP_HEIGHT && !walls[i][j];
-    }
-
-    public static void main(String[] args) {
-        PApplet.runSketch(new String[]{" l m a o"}, new AStarAttempt());
     }
 }

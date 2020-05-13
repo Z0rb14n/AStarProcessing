@@ -1,39 +1,42 @@
 package util;
 
-import processing.core.PVector;
+import static ui.AppPanel.GOAL_X;
+import static ui.AppPanel.GOAL_Y;
 
-import static ui.AStarAttempt.GOAL;
-
-// Represents a node with a given position and a given GOAL
 public class ConcreteNode extends Node {
-    private PVector pos;
+    private float xPos;
+    private float yPos;
 
     // EFFECTS: initializes ConcreteNode with starting position
-    public ConcreteNode(boolean isStarting, PVector pos) {
+    public ConcreteNode(boolean isStarting, float xPos, float yPos) {
         super(isStarting);
-        this.pos = pos;
+        this.xPos = xPos;
+        this.yPos = yPos;
         initWeights();
     }
 
     @Override
     public boolean isGoalNode() {
-        return pos.equals(GOAL);
+        return xPos == GOAL_X && yPos == GOAL_Y;
     }
 
     @Override
     protected float calculateHeuristic() {
-        return pos.dist(GOAL);
+        return (float) Math.sqrt(Math.pow((yPos - GOAL_Y), 2) + Math.pow((xPos - GOAL_X), 2));
     }
 
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof ConcreteNode)) return false;
         ConcreteNode n = (ConcreteNode) o;
-        return n.pos.equals(this.pos);
+        return n.xPos == xPos && n.yPos == yPos;
     }
 
     @Override
     public int hashCode() {
-        return (31 * 17) + pos.hashCode();
+        int hash = 17;
+        hash = 31 * hash + Float.floatToIntBits(xPos);
+        hash = 31 * hash + Float.floatToIntBits(yPos);
+        return hash;
     }
 }
