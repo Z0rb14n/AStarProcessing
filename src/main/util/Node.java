@@ -5,20 +5,20 @@ import java.util.HashMap;
 
 // Represents a node
 public abstract class Node implements Comparable<Node> {
-    protected boolean isStartingNode;
-    protected float weight = Float.MAX_VALUE;
-    protected float publicWeight = Float.MAX_VALUE; // weight including heuristic
-    protected Node previousNode = null; // previous connected node
-    protected final HashMap<Node, Float> pathWeights = new HashMap<>(); // from this node to others
+    private boolean isStartingNode;
+    private float weight = Float.MAX_VALUE;
+    private float publicWeight = Float.MAX_VALUE; // weight including heuristic
+    private Node previousNode = null; // previous connected node
+    private final HashMap<Node, Float> pathWeights = new HashMap<>(); // from this node to others
 
     // EFFECTS: initializes whether this node is a starting node
-    protected Node(boolean isStarting) {
+    Node(boolean isStarting) {
         this.isStartingNode = isStarting;
     }
 
     // MODIFIES: this
     // EFFECTS: initializes the weight of this node
-    protected void initWeights() {
+    void initWeights() {
         if (isStartingNode) {
             weight = 0;
             publicWeight = calculateHeuristic();
@@ -33,7 +33,7 @@ public abstract class Node implements Comparable<Node> {
 
     // MODIFIES: this
     // EFFECTS: given a potential previous node, update current node if node  has lower weight than previous node
-    protected boolean updatePreviousNode(Node n) {
+    private boolean updatePreviousNode(Node n) {
         if (n.weight == Float.MAX_VALUE || !pathWeights.containsKey(n)) throw new IllegalArgumentException();
         float anticipatedWeight = n.weight + n.pathWeights.get(this);
         if (!isStartingNode && (previousNode == null || anticipatedWeight < weight)) {
