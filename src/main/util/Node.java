@@ -36,7 +36,7 @@ public abstract class Node implements Comparable<Node> {
     protected boolean updatePreviousNode(Node n) {
         if (n.weight == Float.MAX_VALUE || !pathWeights.containsKey(n)) throw new IllegalArgumentException();
         float anticipatedWeight = n.weight + n.pathWeights.get(this);
-        if ((previousNode == null && !isStartingNode) || !(anticipatedWeight > weight)) {
+        if (!isStartingNode && (previousNode == null || anticipatedWeight < weight)) {
             this.weight = anticipatedWeight;
             this.publicWeight = anticipatedWeight + calculateHeuristic();
             this.previousNode = n;
@@ -48,6 +48,11 @@ public abstract class Node implements Comparable<Node> {
     // EFFECTS: gets the public weight (including heuristic)
     public float getPublicWeight() {
         return publicWeight;
+    }
+
+    // EFFECTS: gets the weight of the node (i.e. sum of all previous paths)
+    public float getWeight() {
+        return weight;
     }
 
     // EFFECTS: gets the previous node

@@ -10,15 +10,20 @@ import java.util.PriorityQueue;
 import java.util.Random;
 
 public class AppPanel extends JPanel {
-    // Determines whether the walls use a random seed or the given seed
+    // Determines whether the walls use a random seed (i.e. nanosecond time) or the given seed
     private static final boolean IS_RANDOM = true;
     private static final long RANDOM_SEED = 42069;
 
+    private static final boolean PRINT_DEBUG_INFO = false;
+
+    // if false, finds the first path, which may or may not be the shortest
+    private static final boolean FIND_SHORTEST_PATH = false;
+
     // Determines starting position and GOAL position
-    private static final int GOAL_X_INDEX = 39;
-    private static final int GOAL_Y_INDEX = 39;
-    public static final float GOAL_X = GOAL_X_INDEX * 10;
-    public static final float GOAL_Y = GOAL_Y_INDEX * 10;
+    private static final int GOAL_X_INDEX = 40;
+    private static final int GOAL_Y_INDEX = 40;
+    public static final int GOAL_X = GOAL_X_INDEX;
+    public static final int GOAL_Y = GOAL_Y_INDEX;
 
     private static final int START_X_INDEX = 5;
     private static final int START_Y_INDEX = 5;
@@ -27,7 +32,7 @@ public class AppPanel extends JPanel {
 
     private static final int MAP_LENGTH = 60;
     private static final int MAP_HEIGHT = 60;
-    private static final int TILE_SIZE = 10;
+    public static final int TILE_SIZE = 10;
 
     private static final int WINDOW_WIDTH = MAP_LENGTH * TILE_SIZE;
     private static final int WINDOW_HEIGHT = MAP_HEIGHT * TILE_SIZE;
@@ -56,13 +61,32 @@ public class AppPanel extends JPanel {
     // MODIFIES: this
     // EFFECTS: processes one node and draws the outcome to the window
     public void paintComponent(Graphics g) {
+        long[] times = new long[6];
+        times[0] = System.nanoTime();
         graphicsObject = (Graphics2D) g;
         drawBackground();
+        times[0] = System.nanoTime() - times[0];
+        times[1] = System.nanoTime();
         determineIfFinished();
+        times[1] = System.nanoTime() - times[1];
+        times[2] = System.nanoTime();
         processNodeQueue();
+        times[2] = System.nanoTime() - times[2];
+        times[3] = System.nanoTime();
         calculatePathIfExists();
+        times[3] = System.nanoTime() - times[3];
+        times[4] = System.nanoTime();
         drawTileMap();
+        times[4] = System.nanoTime() - times[4];
+        times[5] = System.nanoTime();
         drawNoSolution();
+        times[5] = System.nanoTime() - times[5];
+        if (PRINT_DEBUG_INFO) {
+            System.out.println("----------------------------------------------------");
+            for (int i = 0; i < 6; i++) {
+                System.out.println("Time: " + times[i]);
+            }
+        }
     }
 
     // MODIFIES: this
@@ -76,8 +100,11 @@ public class AppPanel extends JPanel {
     // EFFECTS: initializes walls
     private void initWalls() {
         Random random;
-        if (IS_RANDOM) random = new Random();
-        else random = new Random(RANDOM_SEED);
+        if (IS_RANDOM) {
+            long seed = System.nanoTime();
+            random = new Random(seed);
+            if (PRINT_DEBUG_INFO) System.out.println("Random seed is: " + seed);
+        } else random = new Random(RANDOM_SEED);
         for (int i = 0; i < MAP_LENGTH; i++) {
             for (int j = 0; j < MAP_HEIGHT; j++) {
                 if (i == START_X_INDEX && j == START_Y_INDEX) continue; // don't generate walls over start/end
@@ -93,7 +120,7 @@ public class AppPanel extends JPanel {
         for (int i = 0; i < MAP_LENGTH; i++) {
             for (int j = 0; j < MAP_HEIGHT; j++) {
                 if (walls[i][j]) continue;
-                nodesArray[i][j] = new ConcreteNode((i == START_X_INDEX && j == START_Y_INDEX), i * TILE_SIZE, j * TILE_SIZE);
+                nodesArray[i][j] = new ConcreteNode((i == START_X_INDEX && j == START_Y_INDEX), i, j);
             }
         }
         goalNode = nodesArray[GOAL_X_INDEX][GOAL_Y_INDEX];
@@ -133,6 +160,11 @@ public class AppPanel extends JPanel {
         }
     }
 
+    // EFFECTS: determines whether the given index of array isn't a wall and isn't out of bounds
+    private boolean exists(int i, int j) {
+        return i >= 0 && i < MAP_LENGTH && j >= 0 && j < MAP_HEIGHT && !walls[i][j];
+    }
+
     // MODIFIES: this
     // EFFECTS: processes the first node in the node queue
     private void processNodeQueue() {
@@ -147,20 +179,16 @@ public class AppPanel extends JPanel {
         boolean pathExists = false;
         float goalWeight = Float.MAX_VALUE;
         if (!noSolution && !finished) {
-            for (Node n : discard) {
-                if (n.isGoalNode()) {
-                    pathExists = true;
-                    goalWeight = n.getPublicWeight();
-                }
-            }
             if (discard.contains(goalNode)) {
                 pathExists = true;
-                goalWeight = goalNode.getPublicWeight();
+                goalWeight = goalNode.getWeight();
             }
             if (pathExists) {
-                for (Node n : nodeQueue) {
-                    if (n.getPublicWeight() < goalWeight) {
-                        return; // more paths can be explored
+                if (FIND_SHORTEST_PATH) {
+                    for (Node n : nodeQueue) {
+                        if (n.getWeight() < goalWeight) {
+                            return; // more paths can be explored
+                        }
                     }
                 }
                 finished = true;
@@ -173,13 +201,10 @@ public class AppPanel extends JPanel {
     private void drawTileMap() {
         for (int i = 0; i < MAP_LENGTH; i++) {
             for (int j = 0; j < MAP_HEIGHT; j++) {
-                if (!exists(i, j)) {
-                    graphicsObject.setColor(Color.BLACK);
-                    graphicsObject.fillRect(i * TILE_SIZE, j * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                    continue;
-                }
                 Node n = nodesArray[i][j];
-                if (n.isGoalNode() || n.isStartingNode()) {
+                if (walls[i][j]) {
+                    graphicsObject.setColor(Color.BLACK);
+                } else if (n.isGoalNode() || n.isStartingNode()) {
                     graphicsObject.setColor(Color.RED);
                 } else if (n.getPublicWeight() == Float.MAX_VALUE) {
                     graphicsObject.setColor(Color.WHITE);
@@ -191,11 +216,6 @@ public class AppPanel extends JPanel {
                 graphicsObject.fillRect(i * TILE_SIZE, j * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
         }
-    }
-
-    // EFFECTS: determines whether the given index of array isn't a wall and isn't out of bounds
-    private boolean exists(int i, int j) {
-        return i >= 0 && i < MAP_LENGTH && j >= 0 && j < MAP_HEIGHT && !walls[i][j];
     }
 
     // MODIFIES: this
@@ -219,7 +239,8 @@ public class AppPanel extends JPanel {
         }
         Node n = nodeQueue.poll();
         discard.add(n);
-        assert n != null;
+        ConcreteNode c = (ConcreteNode) n;
+        if (PRINT_DEBUG_INFO) System.out.println("Parsing node at position " + c.xPos + "," + c.yPos);
         nodeQueue.addAll(n.updateConnectedNodes());
     }
 }

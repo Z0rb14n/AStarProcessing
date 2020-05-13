@@ -1,14 +1,17 @@
 package util;
 
-import static ui.AppPanel.GOAL_X;
-import static ui.AppPanel.GOAL_Y;
+import static ui.AppPanel.*;
 
 public class ConcreteNode extends Node {
-    private float xPos;
-    private float yPos;
+    // If true, prioritizes distance to target based on perceived distance (i.e. tile size)
+    //          however, it may not find the shortest path
+    private final static boolean SCALE_DISTANCE_BY_TILE_SIZE = true;
+
+    public int xPos;
+    public int yPos;
 
     // EFFECTS: initializes ConcreteNode with starting position
-    public ConcreteNode(boolean isStarting, float xPos, float yPos) {
+    public ConcreteNode(boolean isStarting, int xPos, int yPos) {
         super(isStarting);
         this.xPos = xPos;
         this.yPos = yPos;
@@ -22,7 +25,11 @@ public class ConcreteNode extends Node {
 
     @Override
     protected float calculateHeuristic() {
-        return (float) Math.sqrt(Math.pow((yPos - GOAL_Y), 2) + Math.pow((xPos - GOAL_X), 2));
+        if (SCALE_DISTANCE_BY_TILE_SIZE) {
+            return (float) Math.sqrt(Math.pow((yPos - GOAL_Y) * TILE_SIZE, 2) + Math.pow((xPos - GOAL_X) * TILE_SIZE, 2));
+        } else {
+            return (float) Math.sqrt(Math.pow((yPos - GOAL_Y), 2) + Math.pow((xPos - GOAL_X), 2));
+        }
     }
 
     @Override
@@ -35,8 +42,8 @@ public class ConcreteNode extends Node {
     @Override
     public int hashCode() {
         int hash = 17;
-        hash = 31 * hash + Float.floatToIntBits(xPos);
-        hash = 31 * hash + Float.floatToIntBits(yPos);
+        hash = 31 * hash + xPos;
+        hash = 31 * hash + yPos;
         return hash;
     }
 }
